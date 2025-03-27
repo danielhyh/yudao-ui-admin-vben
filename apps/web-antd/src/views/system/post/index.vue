@@ -41,6 +41,16 @@ const gridOptions: VxeGridProps<PostVO> = {
   height: 'auto',
   keepSource: true,
   pagerConfig: {},
+  // 控制工具栏按钮
+  toolbarConfig: {
+    import: false,
+    export: false,
+    print: false,
+    custom: true,
+    refresh: { code: 'query' },
+    search: true,
+    zoom: true,
+  },
   proxyConfig: {
     ajax: {
       query: async ({ page }, formValues) => {

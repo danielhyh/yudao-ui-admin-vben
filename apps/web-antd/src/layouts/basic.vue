@@ -137,9 +137,10 @@ watch(
     <template #user-dropdown>
       <UserDropdown
         :avatar
+        :description="userStore.userInfo?.email"
         :menus
+        :tag-text="userStore.userInfo?.username"
         :text="userStore.userInfo?.nickname"
-        tag-text="Admin"
         @logout="handleLogout"
       />
     </template>

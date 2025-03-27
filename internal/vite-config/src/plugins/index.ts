@@ -65,7 +65,11 @@ async function loadCommonPlugins(
 
     {
       condition: !isBuild && devtools,
-      plugins: () => [viteVueDevTools()],
+      plugins: () => [
+        viteVueDevTools({
+          launchEditor: String.raw`D:\Program Files\JetBrains\WebStorm 2023.3.8\bin\webstorm64.exe`,
+        }),
+      ],
     },
     {
       condition: injectMetadata,

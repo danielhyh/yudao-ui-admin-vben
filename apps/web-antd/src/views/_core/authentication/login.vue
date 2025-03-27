@@ -1,20 +1,14 @@
 <script lang="ts" setup>
 import type { VbenFormSchema } from '@vben/common-ui';
-import type { Recordable } from '@vben/types';
 
-import { computed, ref, watchEffect } from 'vue';
+import { computed, markRaw, useTemplateRef, watchEffect } from 'vue';
 
-import { AuthenticationLogin, Verification, z } from '@vben/common-ui';
+import { AuthenticationLogin, SliderCaptcha, z } from '@vben/common-ui';
 import { useAppConfig } from '@vben/hooks';
 import { $t } from '@vben/locales';
 import { useTenantStore } from '@vben/stores';
 
-import {
-  checkCaptcha,
-  getCaptcha,
-  getTenantByWebsite,
-  getTenantIdByName,
-} from '#/api';
+import { getTenantByWebsite, getTenantIdByName } from '#/api';
 import { useAuthStore } from '#/store';
 
 defineOptions({ name: 'Login' });
@@ -27,13 +21,11 @@ const { tenantEnable, captchaEnable } = useAppConfig(
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
 
-const captchaType = 'blockPuzzle';
-const loginData = ref<Recordable<any>>({});
-
-const verifyRef = ref();
+const loginRef =
+  useTemplateRef<InstanceType<typeof AuthenticationLogin>>('loginRef');
 
 const formSchema = computed((): VbenFormSchema[] => {
-  return [
+  const baseSchema = [
     {
       component: 'VbenInput',
       componentProps: {
@@ -78,12 +70,25 @@ const formSchema = computed((): VbenFormSchema[] => {
         .default(import.meta.env.VITE_APP_DEFAULT_PASSWORD),
     },
   ];
+
+  // 如果启用验证码，则添加验证码组件到表单中
+  if (captchaEnable) {
+    baseSchema.push({
+      component: markRaw(SliderCaptcha),
+      fieldName: 'captcha',
+      rules: z.boolean().refine((value) => value, {
+        message: $t('authentication.verifyRequiredTip'),
+      }),
+    });
+  }
+
+  return baseSchema;
 });
 
 /**
  * 处理登录
  */
-const handleLogin = async (values: any) => {
+async function handleLogin(values: any) {
   // 是否开启租户
   if (tenantEnable && !tenantStore.tenantId) {
     const tenantId = await getTenantIdByName(values.tenantName);
@@ -91,25 +96,19 @@ const handleLogin = async (values: any) => {
       tenantStore.setTenantId(tenantId);
     }
   }
-  // 是否开启验证码
-  if (captchaEnable) {
-    loginData.value = values;
-    verifyRef.value.show();
-  } else {
-    authStore.authLogin(values);
-  }
-};
 
-const handleVerifySuccess = async ({ captchaVerification }: any) => {
+  // 登录处理
   try {
-    await authStore.authLogin({
-      ...loginData.value,
-      captchaVerification,
-    });
+    await authStore.authLogin(values);
   } catch (error) {
     console.error('Error in handleLogin:', error);
+    // 登录失败时重置验证码
+    loginRef.value
+      ?.getFormApi()
+      ?.getFieldComponentRef<InstanceType<typeof SliderCaptcha>>('captcha')
+      ?.resume();
   }
-};
+}
 
 watchEffect(async () => {
   if (tenantEnable) {
@@ -128,18 +127,10 @@ watchEffect(async () => {
 <template>
   <div>
     <AuthenticationLogin
+      ref="loginRef"
       :form-schema="formSchema"
       :loading="authStore.loginLoading"
       @submit="handleLogin"
-    />
-    <Verification
-      ref="verifyRef"
-      :captcha-type="captchaType"
-      :check-captcha-api="checkCaptcha"
-      :get-captcha-api="getCaptcha"
-      :img-size="{ width: '400px', height: '200px' }"
-      mode="pop"
-      @on-success="handleVerifySuccess"
     />
   </div>
 </template>

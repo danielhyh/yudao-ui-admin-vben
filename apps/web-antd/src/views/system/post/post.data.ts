@@ -29,6 +29,7 @@ export const formSchema: VbenFormSchema[] = [
 ];
 
 export const columns: VxeGridProps['columns'] = [
+  { type: 'checkbox', title: '勾选列', width: 60 },
   { title: '序号', type: 'seq', width: 50 },
   { field: 'id', title: '岗位编号' },
   { field: 'name', title: '岗位名称' },
